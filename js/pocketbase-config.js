@@ -17,7 +17,7 @@
 
 const POCKETBASE_CONFIG = {
   // Your PocketBase server's URL (self-hosted VPS, PocketHost, etc.)
-  url: "http://127.0.0.1:8090",
+  url: "https://pocketbase-production-d273.up.railway.app",
 
   // Unused — PocketBase has no separate "database" concept, only
   // collections. Kept only because a few call sites (ported as-is
