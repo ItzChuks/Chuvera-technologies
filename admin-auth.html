@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin sign in — Chuvera Technologies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { forest: { 900:'#0e1f19', 800:'#16332a', 700:'#2b5646', 600:'#3c7360', 500:'#5c8f79' }, mint: { 50:'#f5f4f0', 100:'#e8e6df' }, ink: '#181c1a' },
+      fontFamily: { display: ['Sora','sans-serif'], body: ['Inter','sans-serif'], idmono: ['IBM Plex Mono','monospace'] }
+    } }
+  }
+</script>
+<style>
+/* ============================================================
+   Custom styles layered on top of Tailwind (CDN build).
+   Palette: forest green + white. Signature element: the
+   physical "ID badge" card used on login + admin screens —
+   a nod to the printed ID/access-code slip every student
+   actually carries.
+   ============================================================ */
+
+:root {
+  --forest-900: #0e1f19;
+  --forest-700: #2b5646;
+  --forest-600: #3c7360;
+  --forest-500: #5c8f79;
+  --mint-50: #f5f4f0;
+  --mint-100: #e8e6df;
+  --ink: #181c1a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background-color: var(--mint-50);
+}
+
+.font-display {
+  font-family: 'Sora', sans-serif;
+}
+
+.font-mono-id {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.06em;
+}
+
+/* Visible keyboard focus everywhere, always */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--forest-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Signature: the ID badge ---------- */
+.id-badge {
+  position: relative;
+  background: linear-gradient(160deg, var(--forest-900) 0%, var(--forest-700) 55%, var(--forest-600) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px -18px rgba(11, 61, 46, 0.55), 0 0 0 1px rgba(11, 61, 46, 0.06);
+  overflow: hidden;
+}
+
+.id-badge::before {
+  /* punch hole */
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.id-badge::after {
+  /* faint watermark texture */
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -30px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  border: 18px solid rgba(255, 255, 255, 0.06);
+}
+
+.id-code {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.12em;
+  font-size: 1.35rem;
+}
+
+/* Card stack: a faint second card behind the real one, so the
+   badge reads as a physical object sitting in a small stack
+   rather than a flat rectangle floating in empty space. */
+.id-stack {
+  position: relative;
+  width: 100%;
+  max-width: 24rem;
+}
+.id-badge-back {
+  position: absolute;
+  inset: 14px -10px -14px 10px;
+  background: linear-gradient(160deg, var(--forest-700) 0%, var(--forest-500) 100%);
+  border-radius: 18px;
+  opacity: 0.35;
+  transform: rotate(-4deg);
+}
+.id-stack .id-badge {
+  position: relative;
+}
+
+/* Barcode strip along the bottom edge of the ID card */
+.id-barcode {
+  height: 26px;
+  border-radius: 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.55) 0px,
+    rgba(255, 255, 255, 0.55) 2px,
+    transparent 2px,
+    transparent 5px,
+    rgba(255, 255, 255, 0.55) 5px,
+    rgba(255, 255, 255, 0.55) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+  opacity: 0.8;
+}
+
+/* Card lift on hover for clickable summary cards */
+.lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px -18px rgba(11, 61, 46, 0.35);
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .lift, .lift:hover { transition: none; transform: none; }
+}
+
+/* Simple skeleton loading shimmer used while Appwrite data loads */
+.skeleton {
+  background: linear-gradient(90deg, var(--mint-100) 25%, #dedcd2 37%, var(--mint-100) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Status pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.pill-green { background: var(--mint-100); color: var(--forest-700); }
+.pill-gray { background: #f1f2f4; color: #52525b; }
+.pill-red { background: #fdecec; color: #b42318; }
+
+/* Tab toggle (auth.html student/staff switch) — plain CSS so the
+   active state never depends on Tailwind regenerating a class string
+   at runtime. */
+.tab-btn {
+  cursor: pointer;
+  color: rgba(18, 33, 26, 0.5);
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab-btn.active {
+  background: white;
+  color: var(--forest-700);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Admin console sidebar + mobile nav — same plain-CSS approach */
+.nav-btn {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-btn:hover { color: white; }
+.nav-btn.active { background: rgba(255, 255, 255, 0.1); color: white; }
+
+.mnav-btn {
+  cursor: pointer;
+  border: none;
+  background: var(--mint-100);
+  color: rgba(18, 33, 26, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mnav-btn.active { background: var(--forest-700); color: white; }
+
+/* Scrollbar (webkit) — subtle green */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--mint-50); }
+::-webkit-scrollbar-thumb { background: #bfe2cd; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--forest-500); }
+
+
+/* ============================================================
+   Chuvera Technologies — motion & depth upgrade layer
+   (Framer-inspired: spring easing, glass surfaces, a sliding
+   nav indicator, and page-like section transitions)
+   ============================================================ */
+
+:root {
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ambient gradient mesh — used behind hero/auth screens */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mesh-bg::before,
+.mesh-bg::after {
+  content: "";
+  position: absolute;
+  width: 44vw;
+  height: 44vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.28;
+  animation: mesh-drift 24s var(--ease-spring) infinite alternate;
+}
+.mesh-bg::before {
+  background: radial-gradient(circle, var(--forest-500), transparent 70%);
+  top: -14%;
+  left: -12%;
+}
+.mesh-bg::after {
+  background: radial-gradient(circle, var(--forest-700), transparent 70%);
+  bottom: -18%;
+  right: -10%;
+  animation-delay: -10s;
+}
+@keyframes mesh-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(4%, 6%) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mesh-bg::before, .mesh-bg::after { animation: none; }
+}
+
+/* Glass surfaces */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.glass-dark {
+  background: rgba(11, 61, 46, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Springy micro-interaction for buttons/links, layered on top of
+   the existing .lift class (kept for backwards compatibility) */
+.lift, .btn-spring {
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), background 0.2s ease, border-color 0.2s ease;
+}
+.lift:hover, .btn-spring:hover { transform: translateY(-2px) scale(1.012); }
+.lift:active, .btn-spring:active { transform: translateY(0) scale(0.98); }
+
+/* Sliding nav indicator — the signature "framer" touch: an active
+   pill that glides between nav items instead of jumping */
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), height 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.mnav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--forest-700);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+#sidebar-nav, #mobile-nav { position: relative; }
+.nav-btn, .mnav-btn { position: relative; z-index: 1; }
+
+/* Section "page" transition — re-triggers automatically whenever a
+   .tab-section goes from display:none to visible, so switching
+   sidebar sections feels like moving to a new page */
+.tab-section { animation: page-in 0.4s var(--ease-spring); }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-section { animation: none; }
+}
+
+/* Subtle depth-on-hover for content cards, applied via the existing
+   "bg-white rounded-2xl border" card pattern used everywhere */
+.bg-white.rounded-2xl.border {
+  transition: box-shadow 0.3s var(--ease-spring), transform 0.3s var(--ease-spring);
+}
+.bg-white.rounded-2xl.border:hover {
+  box-shadow: 0 4px 10px rgba(11, 61, 46, 0.05), 0 22px 44px -20px rgba(11, 61, 46, 0.22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-white.rounded-2xl.border { transition: none; }
+}
+
+</style>
+</head>
+<body class="font-body min-h-screen grid place-items-center bg-mint-50 px-6 relative">
+  <div class="mesh-bg" aria-hidden="true"></div>
+
+  <div class="w-full max-w-sm relative z-10">
+    <div class="flex items-center gap-3 justify-center mb-10">
+      <div class="w-10 h-10 rounded-xl bg-forest-800 text-white grid place-items-center font-display font-bold">C</div>
+      <span class="font-display font-bold text-lg text-forest-900">Chuvera Technologies</span>
+    </div>
+
+    <div class="glass rounded-2xl border border-ink/10 p-8 shadow-xl shadow-forest-900/5">
+      <p class="font-idmono text-xs text-forest-600 uppercase tracking-widest mb-2">Admin console</p>
+      <h1 class="font-display text-2xl font-bold text-ink mb-6">Sign in</h1>
+
+      <form id="admin-login-form" class="space-y-5">
+        <div>
+          <label for="email" class="block text-sm font-medium text-ink/70 mb-1.5">Email</label>
+          <input id="email" type="email" required placeholder="admin@chuvera.com"
+            class="w-full px-4 py-3 rounded-xl border border-ink/10 bg-white focus:border-forest-600 outline-none transition" />
+        </div>
+        <div>
+          <label for="password" class="block text-sm font-medium text-ink/70 mb-1.5">Password</label>
+          <input id="password" type="password" required placeholder="••••••••"
+            class="w-full px-4 py-3 rounded-xl border border-ink/10 bg-white focus:border-forest-600 outline-none transition" />
+        </div>
+        <button type="submit" id="submit-btn"
+          class="w-full bg-forest-800 text-white font-display font-semibold py-3.5 rounded-xl lift disabled:opacity-60">
+          Sign in
+        </button>
+        <p id="form-error" class="text-sm text-red-600 hidden"></p>
+      </form>
+    </div>
+
+    <a href="index.html" class="block text-center text-sm text-ink/50 mt-6 hover:text-forest-700">← Back to student/staff sign in</a>
+    <p class="text-center text-xs text-ink/30 mt-3">Software built by Chuvera</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.25.2/dist/pocketbase.umd.js"></script>
+  <script src="js/pocketbase-config.js"></script>
+  <script src="js/offline.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/admin-auth.js"></script>
+</body>
+</html>

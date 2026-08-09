@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chuvera Technologies — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          forest: { 900:'#0e1f19', 800:'#16332a', 700:'#2b5646', 600:'#3c7360', 500:'#5c8f79', 400:'#8fab9c' },
+          mint: { 50:'#f5f4f0', 100:'#e8e6df' },
+          ink: '#181c1a',
+        },
+        fontFamily: {
+          display: ['Sora','sans-serif'],
+          body: ['Inter','sans-serif'],
+          idmono: ['IBM Plex Mono','monospace'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+/* ============================================================
+   Custom styles layered on top of Tailwind (CDN build).
+   Palette: forest green + white. Signature element: the
+   physical "ID badge" card used on login + admin screens —
+   a nod to the printed ID/access-code slip every student
+   actually carries.
+   ============================================================ */
+
+:root {
+  --forest-900: #0e1f19;
+  --forest-700: #2b5646;
+  --forest-600: #3c7360;
+  --forest-500: #5c8f79;
+  --mint-50: #f5f4f0;
+  --mint-100: #e8e6df;
+  --ink: #181c1a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background-color: var(--mint-50);
+}
+
+.font-display {
+  font-family: 'Sora', sans-serif;
+}
+
+.font-mono-id {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.06em;
+}
+
+/* Visible keyboard focus everywhere, always */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--forest-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Signature: the ID badge ---------- */
+.id-badge {
+  position: relative;
+  background: linear-gradient(160deg, var(--forest-900) 0%, var(--forest-700) 55%, var(--forest-600) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px -18px rgba(11, 61, 46, 0.55), 0 0 0 1px rgba(11, 61, 46, 0.06);
+  overflow: hidden;
+}
+
+.id-badge::before {
+  /* punch hole */
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.id-badge::after {
+  /* faint watermark texture */
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -30px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  border: 18px solid rgba(255, 255, 255, 0.06);
+}
+
+.id-code {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.12em;
+  font-size: 1.35rem;
+}
+
+/* Card stack: a faint second card behind the real one, so the
+   badge reads as a physical object sitting in a small stack
+   rather than a flat rectangle floating in empty space. */
+.id-stack {
+  position: relative;
+  width: 100%;
+  max-width: 24rem;
+}
+.id-badge-back {
+  position: absolute;
+  inset: 14px -10px -14px 10px;
+  background: linear-gradient(160deg, var(--forest-700) 0%, var(--forest-500) 100%);
+  border-radius: 18px;
+  opacity: 0.35;
+  transform: rotate(-4deg);
+}
+.id-stack .id-badge {
+  position: relative;
+}
+
+/* Barcode strip along the bottom edge of the ID card */
+.id-barcode {
+  height: 26px;
+  border-radius: 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.55) 0px,
+    rgba(255, 255, 255, 0.55) 2px,
+    transparent 2px,
+    transparent 5px,
+    rgba(255, 255, 255, 0.55) 5px,
+    rgba(255, 255, 255, 0.55) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+  opacity: 0.8;
+}
+
+/* Card lift on hover for clickable summary cards */
+.lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px -18px rgba(11, 61, 46, 0.35);
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .lift, .lift:hover { transition: none; transform: none; }
+}
+
+/* Simple skeleton loading shimmer used while Appwrite data loads */
+.skeleton {
+  background: linear-gradient(90deg, var(--mint-100) 25%, #dedcd2 37%, var(--mint-100) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Status pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.pill-green { background: var(--mint-100); color: var(--forest-700); }
+.pill-gray { background: #f1f2f4; color: #52525b; }
+.pill-red { background: #fdecec; color: #b42318; }
+
+/* Tab toggle (auth.html student/staff switch) — plain CSS so the
+   active state never depends on Tailwind regenerating a class string
+   at runtime. */
+.tab-btn {
+  cursor: pointer;
+  color: rgba(18, 33, 26, 0.5);
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab-btn.active {
+  background: white;
+  color: var(--forest-700);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Admin console sidebar + mobile nav — same plain-CSS approach */
+.nav-btn {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-btn:hover { color: white; }
+.nav-btn.active { background: rgba(255, 255, 255, 0.1); color: white; }
+
+.mnav-btn {
+  cursor: pointer;
+  border: none;
+  background: var(--mint-100);
+  color: rgba(18, 33, 26, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mnav-btn.active { background: var(--forest-700); color: white; }
+
+/* Scrollbar (webkit) — subtle green */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--mint-50); }
+::-webkit-scrollbar-thumb { background: #bfe2cd; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--forest-500); }
+
+
+/* ============================================================
+   Chuvera Technologies — motion & depth upgrade layer
+   (Framer-inspired: spring easing, glass surfaces, a sliding
+   nav indicator, and page-like section transitions)
+   ============================================================ */
+
+:root {
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ambient gradient mesh — used behind hero/auth screens */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mesh-bg::before,
+.mesh-bg::after {
+  content: "";
+  position: absolute;
+  width: 44vw;
+  height: 44vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.28;
+  animation: mesh-drift 24s var(--ease-spring) infinite alternate;
+}
+.mesh-bg::before {
+  background: radial-gradient(circle, var(--forest-500), transparent 70%);
+  top: -14%;
+  left: -12%;
+}
+.mesh-bg::after {
+  background: radial-gradient(circle, var(--forest-700), transparent 70%);
+  bottom: -18%;
+  right: -10%;
+  animation-delay: -10s;
+}
+@keyframes mesh-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(4%, 6%) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mesh-bg::before, .mesh-bg::after { animation: none; }
+}
+
+/* Glass surfaces */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.glass-dark {
+  background: rgba(11, 61, 46, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Springy micro-interaction for buttons/links, layered on top of
+   the existing .lift class (kept for backwards compatibility) */
+.lift, .btn-spring {
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), background 0.2s ease, border-color 0.2s ease;
+}
+.lift:hover, .btn-spring:hover { transform: translateY(-2px) scale(1.012); }
+.lift:active, .btn-spring:active { transform: translateY(0) scale(0.98); }
+
+/* Sliding nav indicator — the signature "framer" touch: an active
+   pill that glides between nav items instead of jumping */
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), height 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.mnav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--forest-700);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+#sidebar-nav, #mobile-nav { position: relative; }
+.nav-btn, .mnav-btn { position: relative; z-index: 1; }
+
+/* Section "page" transition — re-triggers automatically whenever a
+   .tab-section goes from display:none to visible, so switching
+   sidebar sections feels like moving to a new page */
+.tab-section { animation: page-in 0.4s var(--ease-spring); }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-section { animation: none; }
+}
+
+/* Subtle depth-on-hover for content cards, applied via the existing
+   "bg-white rounded-2xl border" card pattern used everywhere */
+.bg-white.rounded-2xl.border {
+  transition: box-shadow 0.3s var(--ease-spring), transform 0.3s var(--ease-spring);
+}
+.bg-white.rounded-2xl.border:hover {
+  box-shadow: 0 4px 10px rgba(11, 61, 46, 0.05), 0 22px 44px -20px rgba(11, 61, 46, 0.22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-white.rounded-2xl.border { transition: none; }
+}
+
+/* ============================================================
+   Landing page motion layer — hero entrance, gradient text,
+   floating chips, scroll-reveal, and a connecting "how it
+   works" step line.
+   ============================================================ */
+
+/* ---------- Hero staggered entrance ---------- */
+.hero-in {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: hero-in 0.7s var(--ease-spring) forwards;
+  animation-delay: calc(var(--i, 0) * 0.1s);
+}
+@keyframes hero-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-in { animation: none; opacity: 1; transform: none; }
+}
+
+/* Animated gradient sweep across the key hero phrase */
+.gradient-text {
+  background: linear-gradient(100deg, var(--forest-900) 20%, var(--forest-500) 45%, var(--forest-700) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-sweep 6s ease-in-out infinite;
+}
+@keyframes gradient-sweep {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gradient-text { animation: none; background-position: 0% 50%; }
+}
+
+/* Small floating chips drifting near the hero — purely decorative */
+.float-chip {
+  position: absolute;
+  animation: chip-float 6s ease-in-out infinite;
+}
+.float-chip:nth-child(2) { animation-delay: -2s; }
+.float-chip:nth-child(3) { animation-delay: -4s; }
+@keyframes chip-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(-3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-chip { animation: none; }
+}
+
+/* ---------- ID badge shine sweep (hero card) ---------- */
+.id-badge-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.16) 45%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.16) 55%, transparent 70%);
+  background-size: 250% 250%;
+  background-position: 120% 0%;
+  animation: shine-sweep 5s ease-in-out 1.4s infinite;
+  pointer-events: none;
+}
+@keyframes shine-sweep {
+  0%, 60%, 100% { background-position: 120% 0%; }
+  75% { background-position: -20% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .id-badge-shine { animation: none; }
+}
+
+/* ---------- Scroll reveal ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s var(--ease-spring), transform 0.6s var(--ease-spring);
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---------- Feature card number "pop" + icon spin on hover ---------- */
+.feature-card .feature-icon {
+  transition: transform 0.35s var(--ease-spring), background 0.25s ease, color 0.25s ease;
+}
+.feature-card:hover .feature-icon {
+  transform: rotate(-8deg) scale(1.08);
+  background: var(--forest-700);
+  color: white;
+}
+
+/* ---------- "How it works" step connector ---------- */
+.step-line {
+  position: relative;
+}
+.step-line::before {
+  content: "";
+  position: absolute;
+  top: 1.5rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(60, 115, 96, 0.35), transparent);
+  z-index: 0;
+}
+@media (max-width: 767px) {
+  .step-line::before { display: none; }
+}
+.step-num {
+  position: relative;
+  z-index: 1;
+}
+
+</style>
+</head>
+<body class="font-body relative">
+  <div class="mesh-bg" aria-hidden="true"></div>
+
+  <!-- Top bar -->
+  <header class="w-full px-6 sm:px-10 py-5 flex items-center justify-between max-w-7xl mx-auto">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-forest-800 text-white grid place-items-center font-display font-bold">C</div>
+      <span class="font-display font-bold text-lg tracking-tight text-forest-900">Chuvera Technologies</span>
+    </div>
+    <a href="admin-auth.html" class="text-sm font-medium text-ink/70 hover:text-forest-700 transition">Admin sign in →</a>
+  </header>
+
+  <!-- Hero -->
+  <main class="max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-8 grid lg:grid-cols-2 gap-16 items-center relative">
+    <div>
+      <p class="font-idmono text-xs text-forest-600 mb-4 tracking-widest uppercase hero-in" style="--i:0">Student &amp; Staff Portal</p>
+      <h1 class="font-display text-4xl sm:text-5xl font-bold text-ink leading-[1.08] mb-6 hero-in" style="--i:1">
+        One ID card.<br/><span class="gradient-text">Every term's results.</span>
+      </h1>
+      <p class="text-ink/70 text-base sm:text-lg mb-8 max-w-md hero-in" style="--i:2">
+        No email, no signup form — just your name and the ID printed on your card.
+        Check scores, sit CBT tests, read messages from school, track your progress,
+        and reach the library — all in one place, even with a shaky connection.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 hero-in" style="--i:3">
+        <a href="auth.html?as=student" class="lift group inline-flex items-center justify-between gap-4 bg-forest-800 text-white px-6 py-4 rounded-2xl font-display font-semibold">
+          I'm a Student
+          <span class="opacity-70 group-hover:translate-x-1 transition">→</span>
+        </a>
+        <a href="auth.html?as=staff" class="lift group inline-flex items-center justify-between gap-4 bg-white border border-forest-700/20 text-forest-800 px-6 py-4 rounded-2xl font-display font-semibold">
+          I'm Staff
+          <span class="opacity-70 group-hover:translate-x-1 transition">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Signature ID badge, presented as a stacked physical card -->
+    <div class="flex justify-center lg:justify-end py-6 relative hero-in" style="--i:2">
+      <!-- Floating decorative chips, hidden on small screens to avoid clutter -->
+      <span class="float-chip hidden sm:flex items-center gap-1.5 -top-4 left-2 lg:left-6 bg-white border border-ink/10 rounded-full px-3 py-1.5 text-xs font-medium text-forest-700 shadow-sm">📊 Report card ready</span>
+      <span class="float-chip hidden sm:flex items-center gap-1.5 top-1/3 -left-6 lg:-left-10 bg-white border border-ink/10 rounded-full px-3 py-1.5 text-xs font-medium text-forest-700 shadow-sm">✅ CBT submitted</span>
+      <span class="float-chip hidden sm:flex items-center gap-1.5 -bottom-4 right-4 lg:right-8 bg-white border border-ink/10 rounded-full px-3 py-1.5 text-xs font-medium text-forest-700 shadow-sm">📚 New library note</span>
+      <div class="id-stack">
+        <div class="id-badge-back" aria-hidden="true"></div>
+        <div class="id-badge w-full max-w-sm">
+          <div class="id-badge-shine" aria-hidden="true"></div>
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-white/15 grid place-items-center font-display font-bold text-sm">C</div>
+              <span class="font-display font-semibold text-sm tracking-wide">CHUVERA</span>
+            </div>
+            <span class="text-[10px] uppercase tracking-widest bg-white/15 px-2.5 py-1 rounded-full font-medium">ID Card</span>
+          </div>
+
+          <div class="h-px bg-white/15 mb-6"></div>
+
+          <h2 class="font-display text-2xl font-bold">Amara N. Okafor</h2>
+          <p class="text-white/70 text-sm mb-6">JSS2 · Arm B · 2025/2026</p>
+
+          <div class="flex items-end justify-between mb-6">
+            <div>
+              <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">Student ID</p>
+              <p class="id-code">CHU-0983</p>
+            </div>
+            <div class="w-12 h-12 rounded-full bg-white/10 grid place-items-center font-display font-bold">AO</div>
+          </div>
+
+          <div class="id-barcode" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- What the portal does -->
+  <section class="max-w-7xl mx-auto px-6 sm:px-10 py-16 border-t border-ink/10">
+    <p class="font-idmono text-xs text-forest-600 mb-3 tracking-widest uppercase reveal">In one place</p>
+    <h2 class="font-display text-2xl sm:text-3xl font-bold text-ink mb-10 max-w-lg reveal">Everything your card unlocks</h2>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">01</div>
+        <h3 class="font-display font-semibold mb-2">Scores &amp; report cards</h3>
+        <p class="text-sm text-ink/60">Every term, every session — CA scores, exam totals, grades and class position, kept together and downloadable as a PDF.</p>
+      </div>
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">02</div>
+        <h3 class="font-display font-semibold mb-2">Progress, charted</h3>
+        <p class="text-sm text-ink/60">A term-by-term trend line for every subject, so it's obvious at a glance where you're improving — or slipping.</p>
+      </div>
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">03</div>
+        <h3 class="font-display font-semibold mb-2">CBT tests</h3>
+        <p class="text-sm text-ink/60">Sit tests your teachers publish for your class and subjects, timed and auto-graded the moment you submit.</p>
+      </div>
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">04</div>
+        <h3 class="font-display font-semibold mb-2">Messages from school</h3>
+        <p class="text-sm text-ink/60">Deadlines, resumption dates, and notices from admins or your class teacher, in one inbox.</p>
+      </div>
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">05</div>
+        <h3 class="font-display font-semibold mb-2">School &amp; digital library</h3>
+        <p class="text-sm text-ink/60">Notes and past questions your school has uploaded, plus millions of free books to search alongside them.</p>
+      </div>
+      <div class="feature-card bg-white border border-ink/10 rounded-2xl p-6 lift reveal">
+        <div class="feature-icon w-10 h-10 rounded-xl bg-mint-100 text-forest-700 grid place-items-center font-display font-bold mb-5">06</div>
+        <h3 class="font-display font-semibold mb-2">Works offline</h3>
+        <p class="text-sm text-ink/60">The last scores, tests and materials you loaded stay viewable even when the school's connection drops.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="max-w-7xl mx-auto px-6 sm:px-10 py-16 border-t border-ink/10">
+    <p class="font-idmono text-xs text-forest-600 mb-3 tracking-widest uppercase reveal">Getting in</p>
+    <h2 class="font-display text-2xl sm:text-3xl font-bold text-ink mb-12 max-w-lg reveal">Three steps, no signup form</h2>
+
+    <div class="grid sm:grid-cols-3 gap-10 step-line">
+      <div class="reveal">
+        <div class="step-num w-12 h-12 rounded-2xl bg-forest-800 text-white grid place-items-center font-display font-bold mb-5">1</div>
+        <h3 class="font-display font-semibold mb-2">Get your ID card</h3>
+        <p class="text-sm text-ink/60">Your school issues a printed card with your full name and a unique student or staff ID on it.</p>
+      </div>
+      <div class="reveal">
+        <div class="step-num w-12 h-12 rounded-2xl bg-forest-800 text-white grid place-items-center font-display font-bold mb-5">2</div>
+        <h3 class="font-display font-semibold mb-2">Sign in with it</h3>
+        <p class="text-sm text-ink/60">Type in your name and the ID exactly as printed — no email address or password to create or forget.</p>
+      </div>
+      <div class="reveal">
+        <div class="step-num w-12 h-12 rounded-2xl bg-forest-800 text-white grid place-items-center font-display font-bold mb-5">3</div>
+        <h3 class="font-display font-semibold mb-2">Everything unlocks</h3>
+        <p class="text-sm text-ink/60">Scores, tests, messages, the library and your progress — all sitting behind the one card you already carry.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Staff callout -->
+  <section class="max-w-7xl mx-auto px-6 sm:px-10 py-16 border-t border-ink/10">
+    <div class="grid lg:grid-cols-[1fr_1.4fr] gap-10 items-center">
+      <div class="reveal">
+        <p class="font-idmono text-xs text-forest-600 mb-3 tracking-widest uppercase">Built for staff too</p>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-ink mb-4">Not just for students</h2>
+        <p class="text-sm text-ink/60 max-w-sm">Teachers sign in with the exact same card-based login and get their own set of tools for their class.</p>
+      </div>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <div class="feature-card bg-white border border-ink/10 rounded-2xl p-5 lift reveal">
+          <div class="feature-icon w-9 h-9 rounded-xl bg-mint-100 text-forest-700 grid place-items-center mb-4 text-sm">✎</div>
+          <h3 class="font-display font-semibold text-sm mb-1.5">Enter scores</h3>
+          <p class="text-xs text-ink/60">CA scores, exam totals and remarks, published straight to each student's report card.</p>
+        </div>
+        <div class="feature-card bg-white border border-ink/10 rounded-2xl p-5 lift reveal">
+          <div class="feature-icon w-9 h-9 rounded-xl bg-mint-100 text-forest-700 grid place-items-center mb-4 text-sm">▤</div>
+          <h3 class="font-display font-semibold text-sm mb-1.5">Publish CBT tests</h3>
+          <p class="text-xs text-ink/60">Build timed, auto-graded tests for a class and subject in minutes.</p>
+        </div>
+        <div class="feature-card bg-white border border-ink/10 rounded-2xl p-5 lift reveal">
+          <div class="feature-icon w-9 h-9 rounded-xl bg-mint-100 text-forest-700 grid place-items-center mb-4 text-sm">✉</div>
+          <h3 class="font-display font-semibold text-sm mb-1.5">Message the class</h3>
+          <p class="text-xs text-ink/60">Send a notice to an entire class at once, without chasing anyone down individually.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Closing band -->
+  <section class="bg-forest-900 text-white">
+    <div class="max-w-7xl mx-auto px-6 sm:px-10 py-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      <div>
+        <h2 class="font-display text-2xl font-bold mb-2">Got your ID card handy?</h2>
+        <p class="text-white/60 text-sm max-w-sm">Sign in with your full name and the ID printed on it — takes a few seconds.</p>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+        <a href="auth.html?as=student" class="lift inline-flex items-center justify-center bg-white text-forest-800 px-5 py-3 rounded-xl font-display font-semibold text-sm">Student sign in</a>
+        <a href="auth.html?as=staff" class="lift inline-flex items-center justify-center bg-white/10 border border-white/20 px-5 py-3 rounded-xl font-display font-semibold text-sm">Staff sign in</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="max-w-7xl mx-auto px-6 sm:px-10 py-6 text-xs text-ink/40 flex items-center justify-between flex-wrap gap-2">
+    <span>Chuvera Technologies</span>
+    <span>Software built by <span class="font-medium text-ink/60">Chuvera</span></span>
+  </footer>
+
+  <script src="js/offline.js"></script>
+  <script>
+    // Scroll reveal: fades/slides sections into view as the visitor
+    // scrolls down the landing page. No-ops gracefully if the browser
+    // doesn't support IntersectionObserver.
+    if ("IntersectionObserver" in window) {
+      const revealEls = document.querySelectorAll(".reveal");
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+          if (entry.isIntersecting) {
+            setTimeout(() => entry.target.classList.add("in-view"), i * 60);
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+      revealEls.forEach((el) => io.observe(el));
+    } else {
+      document.querySelectorAll(".reveal").forEach((el) => el.classList.add("in-view"));
+    }
+  </script>
+</body>
+</html>

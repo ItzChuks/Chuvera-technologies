@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Dashboard — Chuvera Technologies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: { forest: { 900:'#0e1f19', 800:'#16332a', 700:'#2b5646', 600:'#3c7360', 500:'#5c8f79' }, mint: { 50:'#f5f4f0', 100:'#e8e6df' }, ink: '#181c1a' },
+      fontFamily: { display: ['Sora','sans-serif'], body: ['Inter','sans-serif'], idmono: ['IBM Plex Mono','monospace'] }
+    } }
+  }
+</script>
+<style>
+/* ============================================================
+   Custom styles layered on top of Tailwind (CDN build).
+   Palette: forest green + white. Signature element: the
+   physical "ID badge" card used on login + admin screens —
+   a nod to the printed ID/access-code slip every student
+   actually carries.
+   ============================================================ */
+
+:root {
+  --forest-900: #0e1f19;
+  --forest-700: #2b5646;
+  --forest-600: #3c7360;
+  --forest-500: #5c8f79;
+  --mint-50: #f5f4f0;
+  --mint-100: #e8e6df;
+  --ink: #181c1a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background-color: var(--mint-50);
+}
+
+.font-display {
+  font-family: 'Sora', sans-serif;
+}
+
+.font-mono-id {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.06em;
+}
+
+/* Visible keyboard focus everywhere, always */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--forest-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Signature: the ID badge ---------- */
+.id-badge {
+  position: relative;
+  background: linear-gradient(160deg, var(--forest-900) 0%, var(--forest-700) 55%, var(--forest-600) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: white;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px -18px rgba(11, 61, 46, 0.55), 0 0 0 1px rgba(11, 61, 46, 0.06);
+  overflow: hidden;
+}
+
+.id-badge::before {
+  /* punch hole */
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.id-badge::after {
+  /* faint watermark texture */
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -30px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  border: 18px solid rgba(255, 255, 255, 0.06);
+}
+
+.id-code {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.12em;
+  font-size: 1.35rem;
+}
+
+/* Card stack: a faint second card behind the real one, so the
+   badge reads as a physical object sitting in a small stack
+   rather than a flat rectangle floating in empty space. */
+.id-stack {
+  position: relative;
+  width: 100%;
+  max-width: 24rem;
+}
+.id-badge-back {
+  position: absolute;
+  inset: 14px -10px -14px 10px;
+  background: linear-gradient(160deg, var(--forest-700) 0%, var(--forest-500) 100%);
+  border-radius: 18px;
+  opacity: 0.35;
+  transform: rotate(-4deg);
+}
+.id-stack .id-badge {
+  position: relative;
+}
+
+/* Barcode strip along the bottom edge of the ID card */
+.id-barcode {
+  height: 26px;
+  border-radius: 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.55) 0px,
+    rgba(255, 255, 255, 0.55) 2px,
+    transparent 2px,
+    transparent 5px,
+    rgba(255, 255, 255, 0.55) 5px,
+    rgba(255, 255, 255, 0.55) 6px,
+    transparent 6px,
+    transparent 10px
+  );
+  opacity: 0.8;
+}
+
+/* Card lift on hover for clickable summary cards */
+.lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px -18px rgba(11, 61, 46, 0.35);
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .lift, .lift:hover { transition: none; transform: none; }
+}
+
+/* Simple skeleton loading shimmer used while Appwrite data loads */
+.skeleton {
+  background: linear-gradient(90deg, var(--mint-100) 25%, #dedcd2 37%, var(--mint-100) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Status pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.pill-green { background: var(--mint-100); color: var(--forest-700); }
+.pill-gray { background: #f1f2f4; color: #52525b; }
+.pill-red { background: #fdecec; color: #b42318; }
+
+/* Tab toggle (auth.html student/staff switch) — plain CSS so the
+   active state never depends on Tailwind regenerating a class string
+   at runtime. */
+.tab-btn {
+  cursor: pointer;
+  color: rgba(18, 33, 26, 0.5);
+  background: transparent;
+  border: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab-btn.active {
+  background: white;
+  color: var(--forest-700);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Dashboard sidebar + mobile nav — same plain-CSS approach */
+.nav-btn {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-btn:hover { color: white; }
+.nav-btn.active { background: rgba(255, 255, 255, 0.1); color: white; }
+
+.mnav-btn {
+  cursor: pointer;
+  border: none;
+  background: var(--mint-100);
+  color: rgba(18, 33, 26, 0.6);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mnav-btn.active { background: var(--forest-700); color: white; }
+
+/* Scrollbar (webkit) — subtle green */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--mint-50); }
+::-webkit-scrollbar-thumb { background: #bfe2cd; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--forest-500); }
+
+
+/* ============================================================
+   Chuvera Technologies — motion & depth upgrade layer
+   (Framer-inspired: spring easing, glass surfaces, a sliding
+   nav indicator, and page-like section transitions)
+   ============================================================ */
+
+:root {
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ambient gradient mesh — used behind hero/auth screens */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mesh-bg::before,
+.mesh-bg::after {
+  content: "";
+  position: absolute;
+  width: 44vw;
+  height: 44vw;
+  min-width: 320px;
+  min-height: 320px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.28;
+  animation: mesh-drift 24s var(--ease-spring) infinite alternate;
+}
+.mesh-bg::before {
+  background: radial-gradient(circle, var(--forest-500), transparent 70%);
+  top: -14%;
+  left: -12%;
+}
+.mesh-bg::after {
+  background: radial-gradient(circle, var(--forest-700), transparent 70%);
+  bottom: -18%;
+  right: -10%;
+  animation-delay: -10s;
+}
+@keyframes mesh-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(4%, 6%) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mesh-bg::before, .mesh-bg::after { animation: none; }
+}
+
+/* Glass surfaces */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.glass-dark {
+  background: rgba(11, 61, 46, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Springy micro-interaction for buttons/links, layered on top of
+   the existing .lift class (kept for backwards compatibility) */
+.lift, .btn-spring {
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), background 0.2s ease, border-color 0.2s ease;
+}
+.lift:hover, .btn-spring:hover { transform: translateY(-2px) scale(1.012); }
+.lift:active, .btn-spring:active { transform: translateY(0) scale(0.98); }
+
+/* Sliding nav indicator — the signature "framer" touch: an active
+   pill that glides between nav items instead of jumping */
+.nav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), height 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.mnav-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--forest-700);
+  opacity: 0;
+  transition: transform 0.45s var(--ease-spring), width 0.35s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+#sidebar-nav, #mobile-nav { position: relative; }
+.nav-btn, .mnav-btn { position: relative; z-index: 1; }
+
+/* Section "page" transition — re-triggers automatically whenever a
+   .tab-section goes from display:none to visible, so switching
+   sidebar sections feels like moving to a new page */
+.tab-section { animation: page-in 0.4s var(--ease-spring); }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-section { animation: none; }
+}
+
+/* Subtle depth-on-hover for content cards, applied via the existing
+   "bg-white rounded-2xl border" card pattern used everywhere */
+.bg-white.rounded-2xl.border {
+  transition: box-shadow 0.3s var(--ease-spring), transform 0.3s var(--ease-spring);
+}
+.bg-white.rounded-2xl.border:hover {
+  box-shadow: 0 4px 10px rgba(11, 61, 46, 0.05), 0 22px 44px -20px rgba(11, 61, 46, 0.22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-white.rounded-2xl.border { transition: none; }
+}
+
+/* ============================================================
+   Student experience upgrade — vertical numbered subjects,
+   count-up stats, staggered lists, badge shine, celebration
+   confetti for CBT results.
+   ============================================================ */
+
+/* ---------- Vertical numbered "My Subjects" timeline ---------- */
+.subject-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.subject-timeline::before {
+  content: "";
+  position: absolute;
+  top: 1.75rem;
+  bottom: 1.75rem;
+  left: 2.125rem;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--mint-100), rgba(60, 115, 96, 0.3), var(--mint-100));
+  z-index: 0;
+}
+.subject-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(24, 28, 26, 0.08);
+  background: var(--mint-50);
+  opacity: 0;
+  transform: translateX(-16px);
+  animation: subject-in 0.5s var(--ease-spring) forwards;
+  animation-delay: calc(var(--i, 0) * 0.08s);
+  transition: background 0.25s ease, transform 0.25s var(--ease-spring), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.subject-row:hover {
+  background: white;
+  border-color: rgba(60, 115, 96, 0.35);
+  transform: translateX(4px);
+  box-shadow: 0 10px 24px -16px rgba(11, 61, 46, 0.35);
+}
+.subject-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--forest-600);
+  background: var(--mint-100);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s var(--ease-spring);
+}
+.subject-row:hover .subject-num {
+  background: var(--forest-700);
+  color: white;
+  transform: scale(1.08);
+}
+.subject-name {
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+.subject-arrow {
+  color: rgba(24, 28, 26, 0.3);
+  transition: transform 0.25s var(--ease-spring), color 0.25s ease;
+}
+.subject-row:hover .subject-arrow {
+  transform: translateX(4px);
+  color: var(--forest-600);
+}
+@keyframes subject-in {
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .subject-row { animation: none; opacity: 1; transform: none; }
+}
+
+/* ---------- Generic staggered list entrance (messages, tests, library) ---------- */
+.stagger-item {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: stagger-in 0.45s var(--ease-spring) forwards;
+  animation-delay: calc(var(--i, 0) * 0.06s);
+}
+@keyframes stagger-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stagger-item { animation: none; opacity: 1; transform: none; }
+}
+
+/* ---------- Count-up pop (numbers "land" when they finish counting) ---------- */
+@keyframes count-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+.count-pop { animation: count-pop 0.35s var(--ease-spring); }
+@media (prefers-reduced-motion: reduce) {
+  .count-pop { animation: none; }
+}
+
+/* ---------- Library: book cards, cover art, and search feedback ---------- */
+.book-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.2s ease;
+}
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 34px -20px rgba(11, 61, 46, 0.4);
+  border-color: var(--forest-600);
+}
+.book-cover {
+  transition: transform 0.4s var(--ease-spring);
+}
+.book-card:hover .book-cover {
+  transform: scale(1.06) rotate(-1deg);
+}
+.book-cover-wrap {
+  overflow: hidden;
+  border-radius: 0.5rem;
+  position: relative;
+}
+.book-cover-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+.book-card:hover .book-cover-wrap::after {
+  transform: translateX(120%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-card, .book-card:hover, .book-cover, .book-card:hover .book-cover { transition: none; transform: none; }
+  .book-cover-wrap::after { display: none; }
+}
+
+/* Book cards fade+rise in, staggered — reuses the --i stagger pattern */
+.book-card.stagger-item { animation-duration: 0.5s; }
+
+.pill-blue { background: #e8eefc; color: #2451c9; }
+.pill-purple { background: #f1e9fb; color: #6d3fc0; }
+.pill-amber { background: #fdf2e0; color: #9a6a12; }
+.pill-teal { background: #e2f5f1; color: #157a6b; }
+
+/* Search bar: glow ring on focus + a little "searching" pulse on the button */
+#lib-search-input {
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+#lib-search-input:focus {
+  box-shadow: 0 0 0 4px rgba(60, 115, 96, 0.15);
+}
+.lib-searching {
+  animation: lib-pulse 1s ease-in-out infinite;
+}
+@keyframes lib-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-searching { animation: none; }
+}
+
+/* Skeleton book-card placeholders (used while a search is in flight) */
+.book-skeleton {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(24,28,26,0.08);
+  border-radius: 0.75rem;
+}
+.book-skeleton .sk-cover { width: 3.5rem; height: 5rem; border-radius: 0.375rem; flex-shrink: 0; }
+.book-skeleton .sk-line { height: 0.6rem; border-radius: 0.25rem; margin-top: 0.5rem; }
+
+/* Empty state */
+.lib-empty {
+  animation: lib-empty-in 0.5s var(--ease-spring);
+}
+@keyframes lib-empty-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.lib-empty-icon {
+  animation: lib-float 3s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes lib-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-empty, .lib-empty-icon { animation: none; }
+}
+
+/* ---------- In-site book reader modal ---------- */
+.reader-backdrop {
+  animation: reader-backdrop-in 0.2s ease forwards;
+}
+@keyframes reader-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.reader-panel {
+  animation: reader-panel-in 0.35s var(--ease-spring) forwards;
+}
+@keyframes reader-panel-in {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.reader-close-btn {
+  background: var(--mint-100);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s var(--ease-spring);
+}
+.reader-close-btn:hover {
+  background: var(--forest-700);
+  transform: rotate(90deg);
+}
+.reader-loading-spin {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--mint-100);
+  border-top-color: var(--forest-600);
+  animation: reader-spin 0.8s linear infinite;
+}
+@keyframes reader-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-backdrop, .reader-panel, .reader-close-btn:hover, .reader-loading-spin { animation: none; transition: none; transform: none; }
+}
+
+/* ---------- ID badge shine sweep ---------- */
+.id-badge-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.16) 45%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.16) 55%, transparent 70%);
+  background-size: 250% 250%;
+  background-position: 120% 0%;
+  animation: shine-sweep 5s ease-in-out 1s infinite;
+  pointer-events: none;
+}
+@keyframes shine-sweep {
+  0%, 60%, 100% { background-position: 120% 0%; }
+  75% { background-position: -20% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .id-badge-shine { animation: none; }
+}
+
+/* ---------- Confetti burst (CBT result celebration) ---------- */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece { display: none; }
+}
+
+/* ---------- Result badge pulse ---------- */
+.result-ring {
+  animation: result-pulse 0.6s var(--ease-spring) 1;
+}
+@keyframes result-pulse {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result-ring { animation: none; }
+}
+
+</style>
+</head>
+<body class="font-body bg-mint-50 text-ink">
+
+<div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
+
+<div class="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+
+  <!-- Backdrop shown behind the drawer on small screens -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-30 opacity-0 pointer-events-none transition-opacity duration-300 lg:hidden" aria-hidden="true"></div>
+
+  <!-- Sidebar: static column on desktop, slide-in drawer on mobile -->
+  <aside id="app-sidebar" class="flex flex-col bg-forest-900 text-white p-6 fixed inset-y-0 left-0 z-40 w-72 max-w-[82vw] -translate-x-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:translate-x-0 lg:static lg:z-auto lg:w-auto lg:sticky lg:top-0 lg:h-screen">
+    <div class="flex items-center justify-between gap-3 mb-10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-white/10 grid place-items-center font-display font-bold">C</div>
+        <span class="font-display font-bold">Chuvera Technologies</span>
+      </div>
+      <button id="sidebar-close-btn" type="button" class="lg:hidden text-white/50 hover:text-white text-xl leading-none" aria-label="Close menu">✕</button>
+    </div>
+    <nav class="flex flex-col gap-1 text-sm" id="sidebar-nav">
+      <div class="nav-indicator" id="sidebar-indicator" aria-hidden="true"></div>
+      <button type="button" data-tab="overview" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">Overview</button>
+      <button type="button" data-tab="subjects" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">My Subjects</button>
+      <button type="button" data-tab="report-card" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">Report Card</button>
+      <button type="button" data-tab="analytics" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">My Progress</button>
+      <button type="button" data-tab="cbt" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">Tests</button>
+      <button type="button" data-tab="library" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">Library</button>
+      <button type="button" data-tab="messages" class="nav-btn text-left px-3 py-2.5 rounded-lg font-medium">Messages</button>
+    </nav>
+    <div class="mt-auto pt-6 border-t border-white/10">
+      <button id="logout-btn" class="text-sm text-white/60 hover:text-white">Sign out →</button>
+    </div>
+  </aside>
+
+  <div class="flex flex-col min-h-screen">
+    <!-- Topbar (hamburger + title) -->
+    <header class="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 bg-white border-b border-ink/10 sticky top-0 z-20">
+      <div class="flex items-center gap-3 min-w-0">
+        <button id="sidebar-open-btn" type="button" class="lg:hidden shrink-0 w-10 h-10 grid place-items-center rounded-xl border border-ink/10 text-ink/70 hover:text-forest-700 hover:border-forest-600/40 transition" aria-label="Open menu" aria-expanded="false" aria-controls="app-sidebar">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M2 4.5H16M2 9H16M2 13.5H16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <div class="min-w-0">
+        <h1 class="font-display font-bold text-lg truncate" id="page-title">Overview</h1>
+        <p class="text-xs text-ink/50" id="page-subtitle">Your ID card, at a glance</p>
+        </div>
+      </div>
+      <button id="logout-btn-mobile" class="lg:hidden text-sm text-forest-700 font-medium">Sign out</button>
+    </header>
+
+    <main class="flex-1 p-5 sm:p-8 max-w-5xl w-full mx-auto">
+
+      <!-- OVERVIEW -->
+      <section id="tab-overview" class="tab-section">
+        <div class="grid md:grid-cols-[1fr_1.3fr] gap-6">
+          <div class="id-badge">
+            <div class="id-badge-shine" aria-hidden="true"></div>
+            <p class="font-idmono text-[11px] uppercase tracking-widest text-white/60 mt-3">Chuvera Technologies · ID Card</p>
+            <h2 class="font-display text-2xl font-bold mt-3" id="p-name">—</h2>
+            <p class="text-white/70 text-sm mb-6" id="p-meta">—</p>
+            <div class="flex items-end justify-between">
+              <div>
+                <p class="text-[11px] uppercase tracking-widest text-white/50 mb-1">Student ID</p>
+                <p class="id-code" id="p-id">—</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-white/10 grid place-items-center font-display font-bold" id="p-initials">—</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl border border-ink/10 p-6">
+            <h2 class="font-display font-bold mb-4">Guardian</h2>
+            <p class="text-sm text-ink/60">Guardian on file: <span id="p-guardian" class="text-ink font-medium">—</span></p>
+            <div class="mt-6 pt-6 border-t border-ink/10 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p class="text-ink/50 mb-1">Subjects</p>
+                <p class="font-display text-xl font-bold" id="p-subject-count">—</p>
+              </div>
+              <div>
+                <p class="text-ink/50 mb-1">Unread messages</p>
+                <p class="font-display text-xl font-bold" id="p-message-count">—</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MY SUBJECTS -->
+      <section id="tab-subjects" class="tab-section hidden">
+        <div class="bg-white rounded-2xl border border-ink/10 p-6">
+          <div class="mb-5">
+            <h2 class="font-display font-bold">My subjects</h2>
+            <p class="text-xs text-ink/40 mt-1">Everything you're offsetting this session, in order</p>
+          </div>
+          <div id="p-subjects" class="subject-timeline"></div>
+        </div>
+      </section>
+
+      <!-- REPORT CARD -->
+      <section id="tab-report-card" class="tab-section hidden">
+        <div class="bg-white rounded-2xl border border-ink/10 p-6">
+          <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <h2 class="font-display font-bold">Report card</h2>
+            <div class="flex gap-2 flex-wrap">
+              <select id="term-select" class="px-3 py-1.5 rounded-lg border border-ink/10 text-sm outline-none focus:border-forest-600">
+                <option>First Term</option><option>Second Term</option><option>Third Term</option>
+              </select>
+              <input id="session-input" placeholder="2025/2026" class="px-3 py-1.5 rounded-lg border border-ink/10 text-sm outline-none focus:border-forest-600 w-28" />
+              <button type="button" id="report-pdf-btn" class="px-3 py-1.5 rounded-lg bg-forest-800 text-white text-sm font-medium lift">Download PDF</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-ink/50 border-b border-ink/10">
+                  <th class="py-2 pr-3">Subject</th>
+                  <th class="py-2 pr-3">CA1</th>
+                  <th class="py-2 pr-3">CA2</th>
+                  <th class="py-2 pr-3">Exam</th>
+                  <th class="py-2 pr-3">Total</th>
+                  <th class="py-2 pr-3">Grade</th>
+                  <th class="py-2 pr-3">Position</th>
+                </tr>
+              </thead>
+              <tbody id="scores-table"></tbody>
+            </table>
+          </div>
+          <div id="report-remarks" class="mt-6 pt-6 border-t border-ink/10 hidden grid sm:grid-cols-2 gap-4 text-sm"></div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS / MY PROGRESS -->
+      <section id="tab-analytics" class="tab-section hidden">
+        <div class="bg-white rounded-2xl border border-ink/10 p-6">
+          <h2 class="font-display font-bold mb-1">Your score trend</h2>
+          <p class="text-sm text-ink/50 mb-5">Total score per subject, term by term this session</p>
+          <div id="progress-empty" class="hidden py-10 text-center text-ink/40 text-sm">No scores published yet — check back once your teachers publish results.</div>
+          <div id="progress-content" class="hidden">
+            <div class="h-72"><canvas id="chart-my-trend"></canvas></div>
+            <div id="progress-stats" class="grid sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-ink/10 text-sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CBT TESTS -->
+      <section id="tab-cbt" class="tab-section hidden">
+        <!-- List of available / completed tests -->
+        <div id="cbt-list-view">
+          <div class="bg-white rounded-2xl border border-ink/10 p-6 mb-6">
+            <h2 class="font-display font-bold mb-1">Available tests</h2>
+            <p class="text-sm text-ink/50 mb-5">Published tests for your class and subjects</p>
+            <div id="cbt-available-list" class="space-y-3"></div>
+          </div>
+          <div class="bg-white rounded-2xl border border-ink/10 p-6">
+            <h2 class="font-display font-bold mb-4">Completed</h2>
+            <div id="cbt-completed-list" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <!-- Taking a test -->
+        <div id="cbt-take-view" class="hidden bg-white rounded-2xl border border-ink/10 p-6">
+          <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <h2 class="font-display font-bold" id="cbt-take-title">Test</h2>
+            <span class="pill pill-red font-idmono" id="cbt-timer">--:--</span>
+          </div>
+          <div id="cbt-take-questions" class="space-y-6"></div>
+          <button type="button" id="cbt-submit-btn" class="mt-6 w-full bg-forest-800 text-white font-display font-semibold px-6 py-3 rounded-xl lift">Submit test</button>
+        </div>
+
+        <!-- Result -->
+        <div id="cbt-result-view" class="hidden bg-white rounded-2xl border border-ink/10 p-8 text-center">
+          <p class="text-sm text-ink/50 mb-2">You scored</p>
+          <p class="font-display font-bold text-4xl mb-1 result-ring" id="cbt-result-score">0/0</p>
+          <p class="text-sm text-ink/50 mb-6" id="cbt-result-pct">0%</p>
+          <button type="button" id="cbt-result-back" class="bg-forest-800 text-white font-display font-semibold px-6 py-3 rounded-xl lift">Back to tests</button>
+        </div>
+      </section>
+
+      <!-- LIBRARY -->
+      <section id="tab-library" class="tab-section hidden">
+        <div class="bg-white rounded-2xl border border-ink/10 p-6 mb-6">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <h2 class="font-display font-bold">Library</h2>
+            <div class="flex gap-2 flex-wrap">
+              <button type="button" data-scope="all" class="lib-scope-btn mnav-btn active px-3 py-1.5 rounded-full text-sm font-medium">All</button>
+              <button type="button" data-scope="school" class="lib-scope-btn mnav-btn px-3 py-1.5 rounded-full text-sm font-medium">School Materials</button>
+              <button type="button" data-scope="digital" class="lib-scope-btn mnav-btn px-3 py-1.5 rounded-full text-sm font-medium">Digital Library</button>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <input id="lib-search-input" placeholder="Search books, notes, subjects..." class="flex-1 px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
+            <button id="lib-search-btn" class="bg-forest-800 text-white font-display font-semibold px-5 rounded-xl lift">Search</button>
+          </div>
+          <p class="text-xs text-ink/40 mt-2">"School Materials" searches what your teachers and admin have uploaded. "Digital Library" searches millions of free books from Google Books and Open Library, and keeps loading more as you scroll — opening right inside Chuvera, no other site needed.</p>
+        </div>
+
+        <div id="lib-school-section" class="mb-6">
+          <h3 class="font-display font-semibold mb-3 text-sm text-ink/60 uppercase tracking-wide">School materials</h3>
+          <div id="lib-school-list" class="grid sm:grid-cols-2 gap-3"></div>
+        </div>
+
+        <div id="lib-digital-section">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="font-display font-semibold text-sm text-ink/60 uppercase tracking-wide">Digital library</h3>
+            <span id="lib-digital-count" class="text-xs text-ink/40"></span>
+          </div>
+          <div id="lib-digital-list" class="grid sm:grid-cols-2 gap-3"></div>
+          <div id="lib-digital-sentinel" class="h-4"></div>
+          <div id="lib-digital-loadmore" class="hidden items-center justify-center gap-2 py-6 text-sm text-ink/40">
+            <span class="reader-loading-spin" style="width:1.1rem;height:1.1rem;border-width:2px;"></span>
+            Loading more books…
+          </div>
+          <p id="lib-digital-end" class="hidden text-center text-xs text-ink/30 py-6">You've reached the end of the results.</p>
+        </div>
+      </section>
+
+      <!-- MESSAGES -->
+      <section id="tab-messages" class="tab-section hidden">
+        <div class="bg-white rounded-2xl border border-ink/10 p-6">
+          <h2 class="font-display font-bold mb-4">Messages</h2>
+          <div id="messages-list" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <p class="text-center text-xs text-ink/30 py-6">Software built by Chuvera</p>
+
+    </main>
+  </div>
+</div>
+
+<!-- IN-SITE BOOK READER — opens digital library books inside Chuvera instead of leaving the site -->
+<div id="book-reader-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-3 sm:p-6 reader-backdrop">
+  <div class="bg-white rounded-2xl w-full max-w-3xl h-[85vh] relative flex flex-col overflow-hidden reader-panel">
+    <div class="flex items-center justify-between gap-3 p-4 border-b border-ink/10 shrink-0">
+      <div class="min-w-0">
+        <p id="reader-title" class="font-display font-semibold truncate"></p>
+        <p id="reader-meta" class="text-xs text-ink/50 truncate"></p>
+      </div>
+      <button type="button" id="reader-close" aria-label="Close reader" class="reader-close-btn shrink-0 w-9 h-9 rounded-full grid place-items-center text-ink/50 hover:text-white text-xl leading-none">&times;</button>
+    </div>
+    <div id="reader-body" class="flex-1 relative bg-mint-50 min-h-0"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pocketbase@0.25.2/dist/pocketbase.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="js/pocketbase-config.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/pdf-utils.js"></script>
+<script src="js/student.js"></script>
+</body>
+</html>

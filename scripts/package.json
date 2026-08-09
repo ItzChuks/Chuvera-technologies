@@ -1,0 +1,13 @@
+{
+  "name": "chuvera-pocketbase-setup",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "One-time script to create the PocketBase collections/rules for the Chuvera school site.",
+  "scripts": {
+    "setup": "node setup-pocketbase.js"
+  },
+  "dependencies": {
+    "pocketbase": "^0.25.2"
+  }
+}
