@@ -12,7 +12,7 @@
    clients pick up the new version instead of a stale cached copy.
    ============================================================ */
 
-const CACHE_NAME = "chuvera-shell-v2";
+const CACHE_NAME = "chuvera-shell-v3";
 
 const SHELL_FILES = [
   "index.html",
@@ -56,20 +56,20 @@ self.addEventListener("fetch", (event) => {
   // untouched — this service worker never sees or caches live data.
   if (event.request.method !== "GET" || url.origin !== self.location.origin) return;
 
+  // Network-first: always try to fetch the latest version of the file
+  // first, so a fix you just deployed reaches visitors immediately.
+  // Only fall back to the cached copy if there's genuinely no
+  // connection (true offline use), and always keep the cache updated
+  // with whatever the network just returned.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      // Cache-first for instant offline loads, but still refresh the
-      // cache in the background when there IS a connection.
-      return cached || networkFetch;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
