@@ -398,6 +398,7 @@ textarea:focus-visible {
         <div>
           <label for="schoolId" class="block text-sm font-medium text-ink/70 mb-1.5">School ID</label>
           <input id="schoolId" type="text" required placeholder="CHU-0983"
+            oninput="this.value = this.value.toUpperCase()"
             class="w-full px-4 py-3 rounded-xl border border-ink/10 bg-white focus:border-forest-600 outline-none transition font-idmono uppercase tracking-widest" />
         </div>
 
