@@ -48,7 +48,7 @@
     errorEl.classList.add("hidden");
 
     const fullName = document.getElementById("fullName").value.trim();
-    const schoolId = document.getElementById("schoolId").value.trim();
+    const schoolId = document.getElementById("schoolId").value.trim().toUpperCase();
     if (!fullName || !schoolId) return;
 
     submitBtn.disabled = true;
