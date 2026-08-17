@@ -567,7 +567,17 @@ async function toggleCbtPublish(testId) {
     loadCbtTests();
   } catch (err) {
     console.error(err);
-    toast(err.message || "Couldn't update the test.", "error");
+    if (err.code === 404) {
+      // The record's gone server-side (deleted from another tab/
+      // session, or this view is just stale) — the stale button
+      // would otherwise 404 forever on every click. Drop it from
+      // the cached list and re-render so it disappears immediately.
+      toast("That test no longer exists — refreshing your list.", "error");
+      CBT_TESTS_CACHE = CBT_TESTS_CACHE.filter((t) => t.$id !== testId);
+      loadCbtTests();
+    } else {
+      toast(err.message || "Couldn't update the test.", "error");
+    }
   }
 }
 
@@ -579,7 +589,13 @@ async function deleteCbtTest(testId) {
     loadCbtTests();
   } catch (err) {
     console.error(err);
-    toast(err.message || "Couldn't delete the test.", "error");
+    if (err.code === 404) {
+      toast("That test was already deleted — refreshing your list.", "error");
+      CBT_TESTS_CACHE = CBT_TESTS_CACHE.filter((t) => t.$id !== testId);
+      loadCbtTests();
+    } else {
+      toast(err.message || "Couldn't delete the test.", "error");
+    }
   }
 }
 

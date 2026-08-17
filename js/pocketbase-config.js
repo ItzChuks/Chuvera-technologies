@@ -244,11 +244,23 @@ const account = {
    unsubscribe replaces Appwrite's client.subscribe(channel).
    ============================================================ */
 function subscribeToDocument(collectionId, documentId, onChange) {
-  pb.collection(collectionId).subscribe(documentId, onChange);
+  // .subscribe() is async (it waits for the SSE connection to open
+  // before it can PATCH /api/realtime with the new subscription).
+  // Not awaiting/catching it here left a rejected promise dangling
+  // whenever that PATCH raced the connection and got back "Invalid
+  // realtime client" (e.g. right after page load, or after a tab
+  // was backgrounded and the browser throttled the EventSource) —
+  // showing up as an uncaught console error even though the feature
+  // (live updates) is non-critical and fine to just silently retry.
+  pb.collection(collectionId)
+    .subscribe(documentId, onChange)
+    .catch((err) => console.warn(`Realtime subscribe (${collectionId}/${documentId}) failed, will retry on reconnect:`, err));
   return () => pb.collection(collectionId).unsubscribe(documentId);
 }
 
 function subscribeToCollection(collectionId, onChange) {
-  pb.collection(collectionId).subscribe("*", onChange);
+  pb.collection(collectionId)
+    .subscribe("*", onChange)
+    .catch((err) => console.warn(`Realtime subscribe (${collectionId}/*) failed, will retry on reconnect:`, err));
   return () => pb.collection(collectionId).unsubscribe("*");
 }
