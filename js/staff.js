@@ -250,8 +250,19 @@ document.getElementById("save-scores-btn").addEventListener("click", async () =>
     // server-side — just running here instead.
     const scoreRows = results.map((r) => ({ ...r, position: positionMap[r.authId] }));
 
+    // Look up existing rows by student_auth_id + subject + term only —
+    // NOT class_name. The "scores" collection's unique index is on
+    // (student_auth_id, subject, term), with no class_name column, so
+    // filtering the existing-check by class_name too can miss a row
+    // that already exists under a different class_name (e.g. the
+    // student was moved to a new class/arm since it was last saved).
+    // When that happens this loop falls through to createDocument()
+    // and PocketBase rejects it with a 400 for violating the unique
+    // index — which is the "Couldn't save scores" error. Querying on
+    // just subject+term matches what the index actually enforces, so
+    // an existing row is always found and updated (into the current
+    // class_name) instead of a duplicate being attempted.
     const { documents: existingScores } = await databases.listDocuments(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.scores, [
-      Query.equal("class_name", className),
       Query.equal("subject", subject),
       Query.equal("term", term),
       Query.limit(500),
