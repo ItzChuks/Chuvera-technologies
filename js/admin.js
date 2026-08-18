@@ -217,6 +217,8 @@ async function loadClasses() {
   if (anClassSel) anClassSel.innerHTML = `<option value="">All classes</option>` + classOptions;
   const libClassSel = document.getElementById("lib-class");
   if (libClassSel) libClassSel.innerHTML = `<option value="">All classes</option>` + CLASSES_CACHE.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+  populateArmSelect("sc-arm", document.getElementById("sc-class").value);
+  populateArmSelect("an-arm", document.getElementById("an-class").value);
 
   updateArmDeptOptions();
   updateSubjectOptions();
@@ -260,6 +262,18 @@ function renderStaffAssignmentOptions() {
   document.getElementById("st-classes").innerHTML = renderClassAssignmentOptionsHtml([], "st-class-check");
   document.getElementById("st-subjects").innerHTML = renderSubjectAssignmentOptionsHtml([], "st-subject-check");
   attachPillToggle(".st-class-check, .st-subject-check");
+}
+
+/** Refills an "All arms" dropdown to match whichever class is picked
+ * in a paired class select — used by the Scores and Analytics filters
+ * so admin can narrow a report down to one arm, not just the whole class. */
+function populateArmSelect(selectId, classId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const current = sel.value;
+  const cls = CLASSES_CACHE.find((c) => c.$id === classId);
+  const arms = cls?.arms || [];
+  sel.innerHTML = `<option value="">All arms</option>` + arms.map((a) => `<option ${a === current ? "selected" : ""}>${escapeHtml(a)}</option>`).join("");
 }
 
 function updateArmDeptOptions() {
@@ -533,7 +547,12 @@ async function loadStudents(searchTerm = "") {
 
   document.getElementById("students-table").innerHTML = rows.map((r) => `
     <tr class="border-b border-ink/5">
-      <td class="py-2.5 pr-3">${escapeHtml(r.full_name)}</td>
+      <td class="py-2.5 pr-3">
+        <div class="flex items-center gap-2.5">
+          ${avatarHtml(r, { size: 32 })}
+          <span>${escapeHtml(r.full_name)}</span>
+        </div>
+      </td>
       <td class="py-2.5 pr-3 font-idmono text-xs">${escapeHtml(r.school_id)}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.class_name || "—")}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.arm || "—")}</td>
@@ -566,7 +585,7 @@ document.getElementById("student-form").addEventListener("submit", async (e) => 
     const guardianPhone = document.getElementById("s-guardian-phone").value.trim();
     const guardianEmail = document.getElementById("s-guardian-email").value.trim();
 
-    const { schoolId } = await createAccount("student", {
+    const { schoolId, userId } = await createAccount("student", {
       fullName,
       classId,
       className: cls?.name || "",
@@ -578,6 +597,16 @@ document.getElementById("student-form").addEventListener("submit", async (e) => 
       guardianEmail,
     });
 
+    const photoFile = document.getElementById("s-photo").files?.[0];
+    if (photoFile) {
+      try {
+        await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.students, userId, { photo: photoFile });
+      } catch (photoErr) {
+        console.error(photoErr);
+        toast("Student added, but the photo couldn't be uploaded.", "error");
+      }
+    }
+
     document.getElementById("modal-name").textContent = fullName;
     document.getElementById("modal-meta").textContent = `${cls?.name || ""}${arm ? " · Arm " + arm : ""}`;
     document.getElementById("modal-id").textContent = schoolId;
@@ -586,6 +615,7 @@ document.getElementById("student-form").addEventListener("submit", async (e) => 
     document.getElementById("id-modal").classList.add("flex");
 
     e.target.reset();
+    document.getElementById("s-photo-preview").textContent = "No photo";
     updateArmDeptOptions();
     await loadStudents();
     await loadStats();
@@ -609,6 +639,24 @@ document.getElementById("modal-close").addEventListener("click", () => {
   document.getElementById("id-modal").classList.remove("flex");
 });
 
+/** Shared photo field for the Edit Student / Edit Staff modals: shows
+ * the current avatar, a file input to replace it, and (only when a
+ * photo already exists) a checkbox to remove it outright. */
+function photoEditFieldHtml(record, inputId) {
+  return `
+    <div>
+      <label class="block text-sm font-medium text-ink/70 mb-1.5">Photo</label>
+      <div class="flex items-center gap-3">
+        <div id="${inputId}-preview" class="w-14 h-14 rounded-lg overflow-hidden shrink-0">${avatarHtml(record, { size: 56 })}</div>
+        <div class="flex-1 space-y-1.5">
+          <input id="${inputId}" type="file" accept="image/png,image/jpeg,image/webp" class="w-full text-sm" />
+          ${record.photo ? `<label class="flex items-center gap-1.5 text-xs text-ink/60 cursor-pointer"><input type="checkbox" id="${inputId}-remove" style="accent-color:#2b5646" /> Remove current photo</label>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function studentEditBodyHtml(s) {
   const classOptions = CLASSES_CACHE.map((c) => `<option value="${c.$id}" ${c.$id === s.class_id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
   return `
@@ -616,6 +664,7 @@ function studentEditBodyHtml(s) {
       <label class="block text-sm font-medium text-ink/70 mb-1.5">Full name</label>
       <input id="ef-s-name" required value="${escapeHtml(s.full_name)}" class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
     </div>
+    ${photoEditFieldHtml(s, "ef-s-photo")}
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="block text-sm font-medium text-ink/70 mb-1.5">Class</label>
@@ -662,6 +711,7 @@ function editStudent(id) {
   openEditModal("student", `Edit ${s.full_name}`, studentEditBodyHtml(s), { id });
   document.getElementById("ef-s-class").addEventListener("change", () => updateEditArmDeptOptions());
   updateEditArmDeptOptions(s.arm, s.department);
+  wirePhotoPreview("ef-s-photo", "ef-s-photo-preview");
 }
 
 async function saveStudentEdit(id) {
@@ -674,7 +724,7 @@ async function saveStudentEdit(id) {
   const guardianPhone = document.getElementById("ef-s-guardian-phone").value.trim();
   const guardianEmail = document.getElementById("ef-s-guardian-email").value.trim();
 
-  await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.students, id, {
+  const data = {
     full_name: fullName,
     class_id: classId,
     class_name: cls?.name || "",
@@ -684,7 +734,13 @@ async function saveStudentEdit(id) {
     guardian_name: guardianName,
     guardian_phone: guardianPhone,
     guardian_email: guardianEmail,
-  });
+  };
+  const photoFile = document.getElementById("ef-s-photo")?.files?.[0];
+  const removePhoto = document.getElementById("ef-s-photo-remove")?.checked;
+  if (photoFile) data.photo = photoFile;
+  else if (removePhoto) data.photo = null;
+
+  await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.students, id, data);
 
   toast("Student updated.");
   await loadStudents(document.getElementById("student-search").value);
@@ -731,7 +787,12 @@ async function loadStaff(searchTerm = "") {
 
   document.getElementById("staff-table").innerHTML = rows.map((r) => `
     <tr class="border-b border-ink/5">
-      <td class="py-2.5 pr-3">${escapeHtml(r.full_name)}</td>
+      <td class="py-2.5 pr-3">
+        <div class="flex items-center gap-2.5">
+          ${avatarHtml(r, { size: 32 })}
+          <span>${escapeHtml(r.full_name)}</span>
+        </div>
+      </td>
       <td class="py-2.5 pr-3 font-idmono text-xs">${escapeHtml(r.school_id)}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.position || "—")}</td>
       <td class="py-2.5 pr-3">${(r.classes || []).map(escapeHtml).join(", ") || "—"}</td>
@@ -759,7 +820,17 @@ document.getElementById("staff-form").addEventListener("submit", async (e) => {
     const classes = [...document.querySelectorAll(".st-class-check:checked")].map((cb) => cb.value);
     const subjects = [...document.querySelectorAll(".st-subject-check:checked")].map((cb) => cb.value);
 
-    const { schoolId } = await createAccount("staff", { fullName, position, classes, subjects });
+    const { schoolId, userId } = await createAccount("staff", { fullName, position, classes, subjects });
+
+    const photoFile = document.getElementById("st-photo").files?.[0];
+    if (photoFile) {
+      try {
+        await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.staff, userId, { photo: photoFile });
+      } catch (photoErr) {
+        console.error(photoErr);
+        toast("Staff member added, but the photo couldn't be uploaded.", "error");
+      }
+    }
 
     document.getElementById("modal-name").textContent = fullName;
     document.getElementById("modal-meta").textContent = position || "Staff";
@@ -769,6 +840,7 @@ document.getElementById("staff-form").addEventListener("submit", async (e) => {
     document.getElementById("id-modal").classList.add("flex");
 
     e.target.reset();
+    document.getElementById("st-photo-preview").textContent = "No photo";
     document.querySelectorAll(".st-class-check, .st-subject-check").forEach((cb) => {
       cb.closest("label").classList.remove("pill-green");
       cb.closest("label").classList.add("pill-gray");
@@ -796,6 +868,7 @@ function staffEditBodyHtml(st) {
       <label class="block text-sm font-medium text-ink/70 mb-1.5">Full name</label>
       <input id="ef-st-name" required value="${escapeHtml(st.full_name)}" class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
     </div>
+    ${photoEditFieldHtml(st, "ef-st-photo")}
     <div>
       <label class="block text-sm font-medium text-ink/70 mb-1.5">Position</label>
       <input id="ef-st-position" value="${escapeHtml(st.position || "")}" class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
@@ -820,6 +893,7 @@ function editStaff(id) {
   if (!st) return;
   openEditModal("staff", `Edit ${st.full_name}`, staffEditBodyHtml(st), { id });
   attachPillToggle(".ef-st-class-check, .ef-st-subject-check");
+  wirePhotoPreview("ef-st-photo", "ef-st-photo-preview");
 }
 
 async function saveStaffEdit(id) {
@@ -828,7 +902,13 @@ async function saveStaffEdit(id) {
   const classes = [...document.querySelectorAll(".ef-st-class-check:checked")].map((cb) => cb.value);
   const subjects = [...document.querySelectorAll(".ef-st-subject-check:checked")].map((cb) => cb.value);
 
-  await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.staff, id, { full_name: fullName, position, classes, subjects });
+  const data = { full_name: fullName, position, classes, subjects };
+  const photoFile = document.getElementById("ef-st-photo")?.files?.[0];
+  const removePhoto = document.getElementById("ef-st-photo-remove")?.checked;
+  if (photoFile) data.photo = photoFile;
+  else if (removePhoto) data.photo = null;
+
+  await databases.updateDocument(POCKETBASE_CONFIG.databaseId, POCKETBASE_CONFIG.collections.staff, id, data);
   toast("Staff member updated.");
   await loadStaff(document.getElementById("staff-search")?.value || "");
   await loadStats();
@@ -854,6 +934,7 @@ async function deleteStaff(id) {
 async function loadScores() {
   const classId = document.getElementById("sc-class").value;
   const className = CLASSES_CACHE.find((c) => c.$id === classId)?.name;
+  const arm = document.getElementById("sc-arm")?.value || "";
   const subject = document.getElementById("sc-subject").value;
   const term = document.getElementById("sc-term").value;
   const searchTerm = document.getElementById("sc-search")?.value || "";
@@ -867,6 +948,13 @@ async function loadScores() {
     SCORES_CACHE = data;
 
     let rows = data;
+    // Scores don't store an arm of their own — narrow by arm using each
+    // score's linked student record instead (class_name alone can span
+    // several arms).
+    if (arm) {
+      if (STUDENTS_CACHE.length === 0) await loadStudents();
+      rows = rows.filter((r) => STUDENTS_CACHE.find((s) => s.$id === r.student_auth_id)?.arm === arm);
+    }
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
       rows = rows.filter((r) =>
@@ -896,7 +984,11 @@ async function loadScores() {
     console.error(err);
   }
 }
-["sc-class", "sc-subject", "sc-term"].forEach((id) => {
+document.getElementById("sc-class")?.addEventListener("change", () => {
+  populateArmSelect("sc-arm", document.getElementById("sc-class").value);
+  loadScores();
+});
+["sc-arm", "sc-subject", "sc-term"].forEach((id) => {
   document.getElementById(id).addEventListener("change", loadScores);
 });
 document.getElementById("sc-search")?.addEventListener("input", debounce(loadScores, 250));
@@ -918,6 +1010,7 @@ function renderChart(canvasId, config) {
 async function loadAnalytics() {
   const classId = document.getElementById("an-class").value;
   const className = CLASSES_CACHE.find((c) => c.$id === classId)?.name;
+  const arm = document.getElementById("an-arm")?.value || "";
   const term = document.getElementById("an-term").value;
 
   const filters = [Query.equal("term", term), Query.limit(500)];
@@ -930,6 +1023,11 @@ async function loadAnalytics() {
   } catch (err) {
     console.error(err);
     return;
+  }
+
+  if (arm) {
+    if (STUDENTS_CACHE.length === 0) await loadStudents();
+    data = data.filter((r) => STUDENTS_CACHE.find((s) => s.$id === r.student_auth_id)?.arm === arm);
   }
 
   const emptyEl = document.getElementById("an-empty");
@@ -1063,7 +1161,11 @@ async function loadStudentTrend() {
   });
 }
 
-["an-class", "an-term"].forEach((id) => {
+document.getElementById("an-class")?.addEventListener("change", () => {
+  populateArmSelect("an-arm", document.getElementById("an-class").value);
+  loadAnalytics();
+});
+["an-arm", "an-term"].forEach((id) => {
   document.getElementById(id)?.addEventListener("change", loadAnalytics);
 });
 document.getElementById("an-student")?.addEventListener("change", loadStudentTrend);

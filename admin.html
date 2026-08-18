@@ -469,6 +469,13 @@ textarea:focus-visible {
                 <label class="block text-sm font-medium text-ink/70 mb-1.5">Full name</label>
                 <input id="s-name" required class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
               </div>
+              <div>
+                <label class="block text-sm font-medium text-ink/70 mb-1.5">Photo (optional)</label>
+                <div class="flex items-center gap-3">
+                  <div id="s-photo-preview" class="w-14 h-14 rounded-lg bg-ink/5 grid place-items-center text-ink/30 text-[10px] text-center shrink-0 overflow-hidden">No photo</div>
+                  <input id="s-photo" type="file" accept="image/png,image/jpeg,image/webp" class="flex-1 text-sm" />
+                </div>
+              </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-sm font-medium text-ink/70 mb-1.5">Class</label>
@@ -537,6 +544,13 @@ textarea:focus-visible {
                 <input id="st-name" required class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
               </div>
               <div>
+                <label class="block text-sm font-medium text-ink/70 mb-1.5">Photo (optional)</label>
+                <div class="flex items-center gap-3">
+                  <div id="st-photo-preview" class="w-14 h-14 rounded-lg bg-ink/5 grid place-items-center text-ink/30 text-[10px] text-center shrink-0 overflow-hidden">No photo</div>
+                  <input id="st-photo" type="file" accept="image/png,image/jpeg,image/webp" class="flex-1 text-sm" />
+                </div>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-ink/70 mb-1.5">Position</label>
                 <input id="st-position" placeholder="e.g. Class Teacher, Bursar" class="w-full px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600" />
               </div>
@@ -591,8 +605,9 @@ textarea:focus-visible {
               <button type="button" id="scores-pdf-btn" class="text-sm font-medium text-forest-700 hover:underline whitespace-nowrap">Download PDF</button>
             </div>
           </div>
-          <div class="grid sm:grid-cols-3 gap-3 mb-5">
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
             <select id="sc-class" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600"></select>
+            <select id="sc-arm" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600"><option value="">All arms</option></select>
             <select id="sc-subject" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600"></select>
             <select id="sc-term" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600">
               <option>First Term</option><option>Second Term</option><option>Third Term</option>
@@ -626,6 +641,7 @@ textarea:focus-visible {
             <h2 class="font-display font-bold">Class performance</h2>
             <div class="flex items-center gap-3 flex-wrap">
               <select id="an-class" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600"></select>
+              <select id="an-arm" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600"><option value="">All arms</option></select>
               <select id="an-term" class="px-3.5 py-2.5 rounded-lg border border-ink/10 outline-none focus:border-forest-600">
                 <option>First Term</option><option>Second Term</option><option>Third Term</option>
               </select>

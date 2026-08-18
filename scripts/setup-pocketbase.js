@@ -84,6 +84,7 @@ const collections = [
       { name: "guardian_name", type: "text" },
       { name: "guardian_phone", type: "text" },
       { name: "guardian_email", type: "text" },
+      { name: "photo", type: "file", maxSelect: 1, maxSize: 5242880, mimeTypes: ["image/jpeg", "image/png", "image/webp"], thumbs: ["100x100"] },
     ],
     indexes: ["CREATE UNIQUE INDEX idx_students_school_id ON students (school_id)"],
   },
@@ -102,6 +103,7 @@ const collections = [
       { name: "position", type: "text" },
       { name: "classes", type: "json" },
       { name: "subjects", type: "json" },
+      { name: "photo", type: "file", maxSelect: 1, maxSize: 5242880, mimeTypes: ["image/jpeg", "image/png", "image/webp"], thumbs: ["100x100"] },
     ],
     indexes: ["CREATE UNIQUE INDEX idx_staff_school_id ON staff (school_id)"],
   },
@@ -282,6 +284,9 @@ async function main() {
       if (!fieldNames.includes("created")) toAdd.push({ name: "created", type: "autodate", onCreate: true });
       if (!fieldNames.includes("updated")) toAdd.push({ name: "updated", type: "autodate", onCreate: true, onUpdate: true });
       if (def.name === "cbt_tests" && !fieldNames.includes("arm")) toAdd.push({ name: "arm", type: "text" });
+      if ((def.name === "students" || def.name === "staff") && !fieldNames.includes("photo")) {
+        toAdd.push({ name: "photo", type: "file", maxSelect: 1, maxSize: 5242880, mimeTypes: ["image/jpeg", "image/png", "image/webp"], thumbs: ["100x100"] });
+      }
 
       // Fix questions/answers being set up as native "json" fields,
       // which auto-parse on read and break the app code's own

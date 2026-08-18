@@ -117,6 +117,49 @@ function initials(name) {
     .join("");
 }
 
+const AVATAR_COLORS = ["#c0392b", "#2b5646", "#1f5f8b", "#7d3c98", "#b9770e", "#117864", "#943126", "#1a5276"];
+/** Deterministic pick from AVATAR_COLORS so the same person always
+ * gets the same fallback badge color across renders. */
+function avatarColor(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+/** Renders a student/staff avatar: their uploaded photo if they have
+ * one, otherwise a colored initials badge in the same spirit — used
+ * in both list rows and the edit modal header. */
+function avatarHtml(record, { size = 40, rounded = "rounded-lg" } = {}) {
+  const style = `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`;
+  const url = record.photo ? pb.files.getURL(record, record.photo, { thumb: "100x100" }) : "";
+  if (url) {
+    return `<img src="${url}" alt="${escapeHtml(record.full_name || "")}" class="${rounded} object-cover shrink-0" style="${style}" />`;
+  }
+  return `<div class="${rounded} grid place-items-center font-display font-bold text-white shrink-0" style="${style};background:${avatarColor(record.$id || record.full_name || "?")}">${escapeHtml(initials(record.full_name || "?"))}</div>`;
+}
+
+/** Wires a file input + preview box pair so picking an image shows an
+ * instant local preview (used by both Add Student and Add Staff). */
+function wirePhotoPreview(inputId, previewId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  if (!input || !preview) return;
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (!file) {
+      preview.textContent = "No photo";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      preview.innerHTML = `<img src="${reader.result}" class="w-full h-full object-cover" alt="Preview" />`;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+wirePhotoPreview("s-photo", "s-photo-preview");
+wirePhotoPreview("st-photo", "st-photo-preview");
+
 /** True if an error looks like a rate limit / abuse-protection hit
  * (either from PocketBase itself, or from our own client-side
  * cooldown in createAccount() below). */
