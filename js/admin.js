@@ -149,6 +149,136 @@ function closeEditModal() {
 document.getElementById("edit-modal-close").addEventListener("click", closeEditModal);
 document.getElementById("edit-modal-cancel").addEventListener("click", closeEditModal);
 
+/* ---------- Shared "view profile" modal ----------
+   Read-only profile view for a student or staff member: a dark
+   header banner with their photo + key details, then a couple of
+   info cards underneath. Opened by clicking a name or the View
+   button in the students/staff tables. */
+function openViewModal(bodyHtml) {
+  document.getElementById("view-modal-content").innerHTML = bodyHtml;
+  document.getElementById("view-modal").classList.remove("hidden");
+  document.getElementById("view-modal").classList.add("flex");
+}
+
+function closeViewModal() {
+  document.getElementById("view-modal").classList.add("hidden");
+  document.getElementById("view-modal").classList.remove("flex");
+  document.getElementById("view-modal-content").innerHTML = "";
+}
+
+document.getElementById("view-modal-close").addEventListener("click", closeViewModal);
+document.getElementById("view-back-btn").addEventListener("click", closeViewModal);
+document.getElementById("view-modal").addEventListener("click", (e) => {
+  if (e.target.id === "view-modal") closeViewModal();
+});
+
+/** Small labeled value used inside the info cards below. */
+function viewField(label, value) {
+  return `
+    <div>
+      <p class="text-xs font-medium text-ink/40 uppercase tracking-wide mb-1">${label}</p>
+      <p class="text-sm text-ink">${value || "—"}</p>
+    </div>
+  `;
+}
+
+function viewHeaderHtml(record, { subtitle, metaLine }) {
+  const joined = record.$createdAt
+    ? new Date(record.$createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : "—";
+  return `
+    <div class="relative rounded-2xl p-6 text-white overflow-hidden mb-6" style="background: linear-gradient(160deg, var(--forest-900) 0%, var(--forest-700) 55%, var(--forest-600) 100%);">
+      <span class="pill pill-green absolute top-5 right-5" style="background:rgba(255,255,255,0.14); color:#fff;">● Active</span>
+      <div class="flex items-center gap-4">
+        ${avatarHtml(record, { size: 64, rounded: "rounded-2xl" })}
+        <div>
+          <h3 class="font-display font-bold text-xl leading-tight">${escapeHtml(record.full_name)}</h3>
+          <p class="text-white/60 text-sm font-idmono mt-0.5">${escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-x-5 gap-y-1.5 mt-4 text-sm text-white/70">
+        ${metaLine}
+        <span>📅 Joined ${joined}</span>
+      </div>
+    </div>
+  `;
+}
+
+function viewCardHtml(title, iconLabel, innerHtml) {
+  return `
+    <div class="bg-white rounded-2xl border border-ink/10 p-5">
+      <h4 class="font-display font-bold text-sm mb-4 flex items-center gap-2">${iconLabel} ${title}</h4>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-4">${innerHtml}</div>
+    </div>
+  `;
+}
+
+function chipListHtml(items) {
+  if (!items || items.length === 0) return `<p class="text-sm text-ink/40">None assigned yet.</p>`;
+  return `<div class="flex flex-wrap gap-2">${items.map((i) => `<span class="pill pill-gray">${escapeHtml(i)}</span>`).join("")}</div>`;
+}
+
+function studentViewHtml(s) {
+  const header = viewHeaderHtml(s, {
+    subtitle: s.school_id,
+    metaLine: `<span>🏫 ${escapeHtml(s.class_name || "—")}${s.arm ? " " + escapeHtml(s.arm) : ""}</span>`,
+  });
+  const personalInfo = viewCardHtml("Personal Info", "🧑", `
+    ${viewField("Full name", escapeHtml(s.full_name))}
+    ${viewField("School ID", `<span class="font-idmono">${escapeHtml(s.school_id)}</span>`)}
+    ${viewField("Class", escapeHtml(s.class_name || "—"))}
+    ${viewField("Arm", escapeHtml(s.arm || "—"))}
+    ${viewField("Department", escapeHtml(s.department || "—"))}
+  `);
+  const guardianInfo = `
+    <div class="bg-white rounded-2xl border border-ink/10 p-5">
+      <h4 class="font-display font-bold text-sm mb-4 flex items-center gap-2">👪 Guardian &amp; Subjects</h4>
+      <div class="grid grid-cols-2 gap-x-4 gap-y-4 mb-4">
+        ${viewField("Guardian name", escapeHtml(s.guardian_name || "—"))}
+        ${viewField("Guardian phone", escapeHtml(s.guardian_phone || "—"))}
+        ${viewField("Guardian email", escapeHtml(s.guardian_email || "—"))}
+      </div>
+      <p class="text-xs font-medium text-ink/40 uppercase tracking-wide mb-2">Subjects</p>
+      ${chipListHtml(s.subjects || [])}
+    </div>
+  `;
+  return `${header}<div class="grid sm:grid-cols-2 gap-5">${personalInfo}${guardianInfo}</div>`;
+}
+
+function staffViewHtml(st) {
+  const header = viewHeaderHtml(st, {
+    subtitle: st.school_id,
+    metaLine: `<span>💼 ${escapeHtml(st.position || "Staff")}</span>`,
+  });
+  const personalInfo = viewCardHtml("Personal Info", "🧑", `
+    ${viewField("Full name", escapeHtml(st.full_name))}
+    ${viewField("School ID", `<span class="font-idmono">${escapeHtml(st.school_id)}</span>`)}
+    ${viewField("Position", escapeHtml(st.position || "—"))}
+  `);
+  const assignments = `
+    <div class="bg-white rounded-2xl border border-ink/10 p-5">
+      <h4 class="font-display font-bold text-sm mb-4 flex items-center gap-2">📚 Assignments</h4>
+      <p class="text-xs font-medium text-ink/40 uppercase tracking-wide mb-2">Assigned classes</p>
+      ${chipListHtml(st.classes || [])}
+      <p class="text-xs font-medium text-ink/40 uppercase tracking-wide mb-2 mt-4">Assigned subjects</p>
+      ${chipListHtml(st.subjects || [])}
+    </div>
+  `;
+  return `${header}<div class="grid sm:grid-cols-2 gap-5">${personalInfo}${assignments}</div>`;
+}
+
+function viewStudent(id) {
+  const s = STUDENTS_CACHE.find((x) => x.$id === id);
+  if (!s) return;
+  openViewModal(studentViewHtml(s));
+}
+
+function viewStaff(id) {
+  const st = STAFF_CACHE.find((x) => x.$id === id);
+  if (!st) return;
+  openViewModal(staffViewHtml(st));
+}
+
 document.getElementById("edit-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!EDIT_CONTEXT) return;
@@ -548,16 +678,17 @@ async function loadStudents(searchTerm = "") {
   document.getElementById("students-table").innerHTML = rows.map((r) => `
     <tr class="border-b border-ink/5">
       <td class="py-2.5 pr-3">
-        <div class="flex items-center gap-2.5">
+        <button type="button" class="flex items-center gap-2.5 text-left hover:text-forest-700" onclick="viewStudent('${r.$id}')">
           ${avatarHtml(r, { size: 32 })}
           <span>${escapeHtml(r.full_name)}</span>
-        </div>
+        </button>
       </td>
       <td class="py-2.5 pr-3 font-idmono text-xs">${escapeHtml(r.school_id)}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.class_name || "—")}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.arm || "—")}</td>
       <td class="py-2.5 pr-3">
         <div class="flex gap-3">
+          <button type="button" class="inline-flex items-center gap-1 bg-forest-800 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg lift" onclick="viewStudent('${r.$id}')">View</button>
           <button type="button" class="text-forest-700 hover:underline" onclick="editStudent('${r.$id}')">Edit</button>
           <button type="button" class="text-forest-700 hover:underline" onclick="downloadStudentReport('${r.$id}')">Report</button>
           <button type="button" class="text-red-600 hover:underline" onclick="deleteStudent('${r.$id}')">Delete</button>
@@ -788,16 +919,17 @@ async function loadStaff(searchTerm = "") {
   document.getElementById("staff-table").innerHTML = rows.map((r) => `
     <tr class="border-b border-ink/5">
       <td class="py-2.5 pr-3">
-        <div class="flex items-center gap-2.5">
+        <button type="button" class="flex items-center gap-2.5 text-left hover:text-forest-700" onclick="viewStaff('${r.$id}')">
           ${avatarHtml(r, { size: 32 })}
           <span>${escapeHtml(r.full_name)}</span>
-        </div>
+        </button>
       </td>
       <td class="py-2.5 pr-3 font-idmono text-xs">${escapeHtml(r.school_id)}</td>
       <td class="py-2.5 pr-3">${escapeHtml(r.position || "—")}</td>
       <td class="py-2.5 pr-3">${(r.classes || []).map(escapeHtml).join(", ") || "—"}</td>
       <td class="py-2.5 pr-3">
         <div class="flex gap-3">
+          <button type="button" class="inline-flex items-center gap-1 bg-forest-800 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg lift" onclick="viewStaff('${r.$id}')">View</button>
           <button type="button" class="text-forest-700 hover:underline" onclick="editStaff('${r.$id}')">Edit</button>
           <button type="button" class="text-red-600 hover:underline" onclick="deleteStaff('${r.$id}')">Delete</button>
         </div>

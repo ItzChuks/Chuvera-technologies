@@ -853,6 +853,20 @@ textarea:focus-visible {
   </div>
 </div>
 
+<!-- View-profile modal, reused for a student or a staff member —
+     admin.js builds the header banner + info cards per record type. -->
+<div id="view-modal" class="fixed inset-0 bg-ink/50 hidden items-center justify-center p-4 sm:p-6 z-50">
+  <div class="bg-mint-50 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-5 sm:px-6 pt-5">
+      <button type="button" id="view-back-btn" class="text-sm font-medium text-ink/50 hover:text-forest-700 flex items-center gap-1">
+        <span aria-hidden="true">←</span> Back
+      </button>
+      <button type="button" id="view-modal-close" class="text-ink/40 hover:text-ink text-lg leading-none" aria-label="Close">✕</button>
+    </div>
+    <div class="px-5 sm:px-6 pb-6 pt-4" id="view-modal-content"></div>
+  </div>
+</div>
+
 <!-- Shared edit modal, reused for editing a class, a student, or a
      staff member — admin.js swaps its title + body per record type. -->
 <div id="edit-modal" class="fixed inset-0 bg-ink/50 hidden items-center justify-center p-6 z-50">
